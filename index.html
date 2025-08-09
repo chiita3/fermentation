@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>診断アプリ</title>
+    <title>発酵診断アプリ</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -36,14 +36,14 @@
 
     <h1>診断テスト</h1>
     <div id="questions"></div>
-    <button onclick="submitAnswers()">診断する</button>
+    <button onclick="submitAnswers()">Start</button>
 
     <h2>診断結果</h2>
     <div id="result"></div>
     <canvas id="chart" width="400" height="400"></canvas>
 
     <script>
-        const GAS_URL = "https://login.live.com/login.srf?wa=wsignin1%2E0&rpsnv=175&ct=1754721719&rver=7%2E5%2E2146%2E0&wp=MBI%5FSSL&wreply=https%3A%2F%2Fonedrive%2Elive%2Ecom%2F%5Fforms%2Fdefault%2Easpx%3Fapr%3D1&lc=1033&id=250206&guests=1&wsucxt=1&cobrandid=11bd8083%2D87e0%2D41b5%2Dbb78%2D0bc43c8a8e8a&aadredir=1";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxVH47uP-KISZf0ScRqAOFh5pWbMRgvliqYYmHOEJb5vUlugmbbj96Nn4s_pHIIKVtYQA/exec";
 
         let questionsByCategory = {};
 
