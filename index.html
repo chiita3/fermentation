@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>診断アプリ</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+        }
+
+        h2 {
+            margin-top: 40px;
+        }
+
+        .question {
+            margin: 8px 0;
+        }
+
+        .category {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>診断テスト</h1>
+    <div id="questions"></div>
+    <button onclick="submitAnswers()">診断する</button>
+
+    <h2>診断結果</h2>
+    <div id="result"></div>
+    <canvas id="chart" width="400" height="400"></canvas>
+
+    <script>
+        const GAS_URL = "https://login.live.com/login.srf?wa=wsignin1%2E0&rpsnv=175&ct=1754721719&rver=7%2E5%2E2146%2E0&wp=MBI%5FSSL&wreply=https%3A%2F%2Fonedrive%2Elive%2Ecom%2F%5Fforms%2Fdefault%2Easpx%3Fapr%3D1&lc=1033&id=250206&guests=1&wsucxt=1&cobrandid=11bd8083%2D87e0%2D41b5%2Dbb78%2D0bc43c8a8e8a&aadredir=1";
+
+        let questionsByCategory = {};
+
+        fetch(`${GAS_URL}?type=questions`)
+            .then(res => res.json())
+            .then(data => {
+                data.questions.forEach(q => {
+                    if (!questionsByCategory[q.category]) {
+                        questionsByCategory[q.category] = [];
+                    }
+                    questionsByCategory[q.category].push(q);
+                });
+                renderQuestions();
+            });
+
+        function renderQuestions() {
+            const container = document.getElementById('questions');
+            container.innerHTML = '';
+
+            for (let category in questionsByCategory) {
+                const div = document.createElement('div');
+                div.className = 'category';
+                div.innerHTML = `<h3>${category}</h3>`;
+                questionsByCategory[category].forEach(q => {
+                    div.innerHTML += `
+                      <div class="question">
+                        <label>
+                          <input type="checkbox" value="${q.id}"> ${q.text}
+                        </label>
+                      </div>
+                    `;
+                });
+                container.appendChild(div);
+            }
+        }
+
+        function submitAnswers() {
+            const checked = Array.from(document.querySelectorAll('input[type=checkbox]:checked'))
+                .map(cb => Number(cb.value));
+
+            fetch(`${GAS_URL}?type=diagnose&answers=${encodeURIComponent(JSON.stringify(checked))}`)
+                .then(res => res.json())
+                .then(data => {
+                    showResult(data.diagnosis);
+                });
+        }
+
+        function showResult(diagnosis) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '';
+
+            const labels = [];
+            const scores = [];
+
+            diagnosis.forEach(r => {
+                resultDiv.innerHTML += `<p>${r.category}: スコア ${r.score} → ${r.tendency}</p>`;
+                labels.push(r.category);
+                scores.push(r.score);
+            });
+
+            const ctx = document.getElementById('chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'カテゴリ別スコア',
+                        data: scores,
+                        fill: true,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)'
+                    }]
+                },
+                options: { scales: { r: { suggestedMin: 0, suggestedMax: 5 } } }
+            });
+        }
+    </script>
+
+</body>
+
+</html>
