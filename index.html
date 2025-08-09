@@ -3,109 +3,258 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>発酵診断アプリ</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Inter Font -->
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <style>
         body {
-            font-family: sans-serif;
-            margin: 20px;
-        }
-
-        h2 {
-            margin-top: 40px;
-        }
-
-        .question {
-            margin: 8px 0;
-        }
-
-        .category {
-            margin-bottom: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-        }
-
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
+            font-family: 'Inter', sans-serif;
         }
     </style>
 </head>
 
-<body>
+<body class="bg-gray-100 text-gray-800 antialiased flex flex-col items-center min-h-screen p-4">
 
-    <h1>診断テスト</h1>
-    <div id="questions"></div>
-    <button onclick="submitAnswers()">Start</button>
+    <div class="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 space-y-8">
+        <!-- アプリケーションヘッダー -->
+        <header class="text-center">
+            <h1 class="text-4xl font-bold text-gray-900">発酵診断</h1>
+            <p class="mt-2 text-gray-600">あなたの揺らぎを診断します。</p>
+        </header>
 
-    <h2>診断結果</h2>
-    <div id="result"></div>
-    <canvas id="chart" width="400" height="400"></canvas>
+        <!-- 質問セクション -->
+        <div id="questions-section" class="space-y-6">
+            <h2 id="step-title" class="text-2xl font-semibold border-b-2 pb-2"></h2>
+            <p id="step-info" class="text-gray-500"></p>
+            <div id="questions-container" class="space-y-4">
+                <!-- 質問はここに動的に挿入される -->
+            </div>
+            <div class="flex justify-between items-center mt-6">
+                <button id="prev-button"
+                    class="hidden bg-gray-300 text-gray-700 font-bold py-3 px-8 rounded-full shadow-lg hover:bg-gray-400 transition duration-300 transform hover:scale-105">
+                    戻る
+                </button>
+                <button id="next-button"
+                    class="bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105">
+                    次へ
+                </button>
+            </div>
+        </div>
+
+        <!-- ローディングインジケーター -->
+        <div id="loading-section" class="hidden flex justify-center items-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+        </div>
+
+        <!-- 結果セクション -->
+        <div id="results-section" class="hidden space-y-6">
+            <h2 class="text-2xl font-semibold border-b-2 pb-2">診断結果</h2>
+            <div id="results-container" class="space-y-2">
+                <!-- 結果はここに動的に挿入される -->
+            </div>
+            <div class="flex justify-center">
+                <div class="w-full max-w-sm">
+                    <canvas id="chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxVH47uP-KISZf0ScRqAOFh5pWbMRgvliqYYmHOEJb5vUlugmbbj96Nn4s_pHIIKVtYQA/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyhokXXSo1PKGWoo4Y3Q3N2D2LXWTx90bO221ykkxPuo5AW6D2jvHL5aXAE7o2ySna8uw/exec";
+
+        // HTML要素の取得
+        const questionsSection = document.getElementById('questions-section');
+        const questionsContainer = document.getElementById('questions-container');
+        const nextButton = document.getElementById('next-button');
+        const prevButton = document.getElementById('prev-button');
+        const loadingSection = document.getElementById('loading-section');
+        const resultsSection = document.getElementById('results-section');
+        const resultsContainer = document.getElementById('results-container');
+        const chartElement = document.getElementById('chart');
+        const stepTitle = document.getElementById('step-title');
+        const stepInfo = document.getElementById('step-info');
 
         let questionsByCategory = {};
+        let orderedCategories = [];
+        let userAnswers = {};
+        let currentStep = 0;
 
-        fetch(`${GAS_URL}?type=questions`)
-            .then(res => res.json())
-            .then(data => {
-                data.questions.forEach(q => {
-                    if (!questionsByCategory[q.category]) {
-                        questionsByCategory[q.category] = [];
-                    }
-                    questionsByCategory[q.category].push(q);
-                });
-                renderQuestions();
-            });
+        // 質問をロードして表示する
+        async function loadQuestions() {
+            try {
+                console.log(`質問をロード中... フェッチURL: ${GAS_URL}?type=questions`);
+                const response = await fetch(`${GAS_URL}?type=questions`);
 
-        function renderQuestions() {
-            const container = document.getElementById('questions');
-            container.innerHTML = '';
+                if (!response.ok) {
+                    throw new Error(`HTTPエラー！ステータス: ${response.status}`);
+                }
 
-            for (let category in questionsByCategory) {
-                const div = document.createElement('div');
-                div.className = 'category';
-                div.innerHTML = `<h3>${category}</h3>`;
-                questionsByCategory[category].forEach(q => {
-                    div.innerHTML += `
-                      <div class="question">
-                        <label>
-                          <input type="checkbox" value="${q.id}"> ${q.text}
-                        </label>
-                      </div>
-                    `;
-                });
-                container.appendChild(div);
+                const data = await response.json();
+
+                if (data.questions) {
+                    // カテゴリ別に質問をグループ化
+                    data.questions.forEach(q => {
+                        if (!questionsByCategory[q.category]) {
+                            questionsByCategory[q.category] = [];
+                        }
+                        questionsByCategory[q.category].push(q);
+                    });
+                    orderedCategories = ["体", "心", "脳", "環境"]; 
+                    renderStep();
+                } else {
+                    console.error("質問の取得に失敗しました:", data.error);
+                    alert("質問のロードに失敗しました。GASのURLが正しいか、デプロイ設定が「全員」になっているか確認してください。");
+                }
+            } catch (error) {
+                console.error("質問のフェッチ中にエラーが発生しました:", error);
+                alert("質問のロード中にネットワークエラーが発生しました。GASのURLが正しいか確認してください。");
             }
         }
 
-        function submitAnswers() {
-            const checked = Array.from(document.querySelectorAll('input[type=checkbox]:checked'))
-                .map(cb => Number(cb.value));
+        // 現在のステップの質問をレンダリングする
+        function renderStep() {
+            questionsContainer.innerHTML = '';
+            const currentCategory = orderedCategories[currentStep];
+            const questions = questionsByCategory[currentCategory];
 
-            fetch(`${GAS_URL}?type=diagnose&answers=${encodeURIComponent(JSON.stringify(checked))}`)
-                .then(res => res.json())
-                .then(data => {
-                    showResult(data.diagnosis);
+            // ステップの情報を更新
+            stepTitle.textContent = `${currentCategory}の質問`;
+            stepInfo.textContent = `ステップ ${currentStep + 1} / ${orderedCategories.length}`;
+
+            // 前へボタンの表示/非表示
+            if (currentStep === 0) {
+                prevButton.classList.add('hidden');
+            } else {
+                prevButton.classList.remove('hidden');
+            }
+
+            // 次へボタンのテキストを更新
+            if (currentStep === orderedCategories.length - 1) {
+                nextButton.textContent = '結果を見る';
+            } else {
+                nextButton.textContent = '次へ';
+            }
+            nextButton.classList.remove('hidden');
+
+            if (questions) {
+                questions.forEach(q => {
+                    const questionDiv = document.createElement('div');
+                    questionDiv.className = 'bg-gray-50 p-4 rounded-lg';
+                    questionDiv.innerHTML = `
+                        <p class="text-md font-bold text-gray-700">${q.text}</p>
+                        <div class="mt-2 flex items-center space-x-6">
+                            <label class="flex items-center space-x-2">
+                                <input type="radio" name="q-${q.id}" value="1" class="h-4 w-4 text-blue-600 focus:ring-blue-500" ${userAnswers[q.id] === 1 ? 'checked' : ''}>
+                                <span class="text-gray-700">はい</span>
+                            </label>
+                            <label class="flex items-center space-x-2">
+                                <input type="radio" name="q-${q.id}" value="0" class="h-4 w-4 text-blue-600 focus:ring-blue-500" ${userAnswers[q.id] === 0 ? 'checked' : ''}>
+                                <span class="text-gray-700">いいえ</span>
+                            </label>
+                        </div>
+                    `;
+                    questionsContainer.appendChild(questionDiv);
                 });
+            }
         }
 
-        function showResult(diagnosis) {
-            const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = '';
+        // 次のステップに進む
+        function goToNextStep() {
+            // 現在のステップの回答を保存
+            const currentCategory = orderedCategories[currentStep];
+            const questions = questionsByCategory[currentCategory];
+            const isAllAnswered = questions.every(q => document.querySelector(`input[name="q-${q.id}"]:checked`));
 
+            if (!isAllAnswered) {
+                alert("すべての質問に回答してください。");
+                return;
+            }
+
+            questions.forEach(q => {
+                const selected = document.querySelector(`input[name="q-${q.id}"]:checked`);
+                if (selected) {
+                    userAnswers[q.id] = Number(selected.value);
+                }
+            });
+
+            if (currentStep < orderedCategories.length - 1) {
+                currentStep++;
+                renderStep();
+            } else {
+                submitAnswers();
+            }
+        }
+        
+        // 前のステップに戻る
+        function goToPrevStep() {
+            if (currentStep > 0) {
+                currentStep--;
+                renderStep();
+            }
+        }
+
+        // 質問の回答を送信する
+        async function submitAnswers() {
+            questionsSection.classList.add('hidden');
+            loadingSection.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
+
+            const checkedAnswers = Object.keys(userAnswers)
+                .filter(id => userAnswers[id] === 1)
+                .map(id => Number(id));
+
+            try {
+                console.log(`診断結果をフェッチ中... 送信データ: ${JSON.stringify(checkedAnswers)}`);
+                console.log(`フェッチURL: ${GAS_URL}?type=diagnose&answers=${encodeURIComponent(JSON.stringify(checkedAnswers))}`);
+                const response = await fetch(`${GAS_URL}?type=diagnose&answers=${encodeURIComponent(JSON.stringify(checkedAnswers))}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTPエラー！ステータス: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                loadingSection.classList.add('hidden');
+                if (data.diagnosis) {
+                    showResult(data.diagnosis);
+                } else {
+                    console.error("診断結果の取得に失敗しました:", data.error);
+                    questionsSection.classList.remove('hidden');
+                    alert("診断結果の取得に失敗しました。GASのコードを確認してください。");
+                }
+            } catch (error) {
+                console.error("診断のフェッチ中にエラーが発生しました:", error);
+                loadingSection.classList.add('hidden');
+                questionsSection.classList.remove('hidden');
+                alert("診断中にネットワークエラーが発生しました。GASのURLが正しいか確認してください。");
+            }
+        }
+
+        // 結果を表示する
+        function showResult(diagnosis) {
+            resultsContainer.innerHTML = '';
             const labels = [];
             const scores = [];
 
             diagnosis.forEach(r => {
-                resultDiv.innerHTML += `<p>${r.category}: スコア ${r.score} → ${r.tendency}</p>`;
+                resultsContainer.innerHTML += `
+                    <div class="p-4 bg-blue-50 rounded-lg">
+                        <p class="text-lg font-medium text-blue-800">${r.category}: スコア ${r.score}</p>
+                        <p class="mt-1 text-blue-600">傾向: ${r.tendency}</p>
+                    </div>
+                `;
                 labels.push(r.category);
                 scores.push(r.score);
             });
 
-            const ctx = document.getElementById('chart').getContext('2d');
-            new Chart(ctx, {
+            // チャート描画
+            new Chart(chartElement.getContext('2d'), {
                 type: 'radar',
                 data: {
                     labels: labels,
@@ -113,15 +262,56 @@
                         label: 'カテゴリ別スコア',
                         data: scores,
                         fill: true,
-                        borderColor: 'rgb(75, 192, 192)',
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)'
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        pointBackgroundColor: 'rgb(59, 130, 246)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(59, 130, 246)'
                     }]
                 },
-                options: { scales: { r: { suggestedMin: 0, suggestedMax: 5 } } }
+                options: {
+                    responsive: true,
+                    elements: {
+                        line: {
+                            borderWidth: 3
+                        }
+                    },
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: 'rgba(156, 163, 175, 1)'
+                            },
+                            grid: {
+                                color: 'rgba(156, 163, 175, 1)'
+                            },
+                            pointLabels: {
+                                color: 'rgb(55, 65, 81)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 5,
+                            ticks: {
+                                display: false
+                            }
+                        }
+                    }
+                }
             });
-        }
-    </script>
 
+            resultsSection.classList.remove('hidden');
+        }
+
+        // イベントリスナー
+        nextButton.addEventListener('click', goToNextStep);
+        prevButton.addEventListener('click', goToPrevStep);
+
+        // アプリケーション起動
+        loadQuestions();
+    </script>
 </body>
 
 </html>
