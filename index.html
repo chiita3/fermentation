@@ -30,61 +30,12 @@
         <!-- スタート画面 -->
         <div id="start-section" class="flex flex-col items-center justify-center space-y-6">
             <p class="text-lg text-gray-700 text-center">
-                質問に答える前に、あなたの情報を入力してください。
+                質問に「はい」か「いいえ」で答えてください。
             </p>
             <button id="start-button"
                 class="bg-green-600 text-white font-bold py-4 px-10 rounded-full text-xl shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-105">
-                診断を始める
+                Start
             </button>
-        </div>
-
-        <!-- ユーザー情報入力セクション -->
-        <div id="user-info-section" class="hidden space-y-6">
-            <h2 class="text-2xl font-semibold border-b-2 pb-2">あなたの情報を入力してください</h2>
-            <form id="user-info-form" class="space-y-4">
-                <div>
-                    <label for="last-name" class="block text-sm font-medium text-gray-700">苗字 (必須)</label>
-                    <input type="text" id="last-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label for="first-name" class="block text-sm font-medium text-gray-700">氏名 (必須)</label>
-                    <input type="text" id="first-name" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label for="company-name" class="block text-sm font-medium text-gray-700">会社名</label>
-                    <input type="text" id="company-name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label for="department" class="block text-sm font-medium text-gray-700">部署名</label>
-                    <input type="text" id="department" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label for="age" class="block text-sm font-medium text-gray-700">年代</label>
-                    <select id="age" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="">選択してください</option>
-                        <option value="20代">20代</option>
-                        <option value="30代">30代</option>
-                        <option value="40代">40代</option>
-                        <option value="50代">50代</option>
-                        <option value="60代以上">60代以上</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="gender" class="block text-sm font-medium text-gray-700">性別</label>
-                    <select id="gender" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="">選択してください</option>
-                        <option value="男性">男性</option>
-                        <option value="女性">女性</option>
-                        <option value="その他">その他</option>
-                    </select>
-                </div>
-                <div class="flex justify-center mt-6">
-                    <button type="submit" id="submit-user-info"
-                        class="bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105">
-                        質問に進む
-                    </button>
-                </div>
-            </form>
         </div>
 
         <!-- 質問セクション -->
@@ -107,15 +58,8 @@
         </div>
 
         <!-- ローディングインジケーター -->
-        <div id="loading-section" class="hidden flex flex-col items-center space-y-4">
+        <div id="loading-section" class="hidden flex justify-center items-center">
             <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-            <p class="text-gray-600">データを読み込み中です...</p>
-        </div>
-
-        <!-- エラーメッセージ表示セクション -->
-        <div id="error-section" class="hidden text-center p-4 rounded-lg bg-red-100 text-red-700">
-            <p id="error-message" class="font-medium"></p>
-            <p class="mt-2 text-sm">問題が解決しない場合は、GASのURLとデプロイ設定をご確認ください。</p>
         </div>
 
         <!-- 結果セクション -->
@@ -124,40 +68,29 @@
             <div id="results-container" class="space-y-2">
                 <!-- 結果はここに動的に挿入される -->
             </div>
-            <div class="flex justify-center mt-6">
+            <div class="flex justify-center">
                 <div class="w-full max-w-sm">
                     <canvas id="chart"></canvas>
                 </div>
             </div>
-            <button id="restart-button"
-                class="bg-green-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-105">
-                もう一度診断する
-            </button>
         </div>
-        
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzQBMxvGeSevkyPQYtyVRjLjHAa3f3TSRn1Zt36iAYYzDRH44Lk95i_bSOjbdqLSDeK0w/exec";
+        // デプロイ後、「アクセスできるユーザー」を「全員」に設定して発行された新しいURLが必要。
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxxSOP9xkG3IyPE8ciEgZWipgwgcyS-fgYN5zQj4JKmNGVetNfekLgtzP9V7QAx1PI8qw/exec";
 
-        // すべての主要なセクション要素を取得
-        const sections = {
-            'start-section': document.getElementById('start-section'),
-            'user-info-section': document.getElementById('user-info-section'),
-            'questions-section': document.getElementById('questions-section'),
-            'loading-section': document.getElementById('loading-section'),
-            'error-section': document.getElementById('error-section'),
-            'results-section': document.getElementById('results-section')
-        };
+        // HTML要素の取得
+        const startSection = document.getElementById('start-section');
         const startButton = document.getElementById('start-button');
-        const userInfoForm = document.getElementById('user-info-form');
+        const questionsSection = document.getElementById('questions-section');
         const questionsContainer = document.getElementById('questions-container');
         const nextButton = document.getElementById('next-button');
         const prevButton = document.getElementById('prev-button');
-        const errorMessageElement = document.getElementById('error-message');
+        const loadingSection = document.getElementById('loading-section');
+        const resultsSection = document.getElementById('results-section');
         const resultsContainer = document.getElementById('results-container');
         const chartElement = document.getElementById('chart');
-        const restartButton = document.getElementById('restart-button');
         const stepTitle = document.getElementById('step-title');
         const stepInfo = document.getElementById('step-info');
 
@@ -165,84 +98,83 @@
         let orderedCategories = [];
         let userAnswers = {};
         let currentStep = 0;
-        let chartInstance = null;
-        let userInfo = {};
-
-        // 画面の表示を制御する一元化された関数
-        function showSection(sectionId) {
-            Object.keys(sections).forEach(id => {
-                if (id === sectionId) {
-                    sections[id].classList.remove('hidden');
-                } else {
-                    sections[id].classList.add('hidden');
-                }
-            });
-        }
 
         // 質問をロードして表示する
         async function loadQuestions() {
-            showSection('loading-section');
-            console.log("Fetching questions from URL:", `${GAS_URL}`);
-
             try {
-                const url = new URL(GAS_URL);
-                url.searchParams.append('type', 'questions');
+                console.log(`質問をロード中... フェッチURL: ${GAS_URL}?type=questions`);
+                const response = await fetch(`${GAS_URL}?type=questions`);
 
-                const response = await fetch(url.toString(), { mode: 'cors' });
-                
                 if (!response.ok) {
-                    throw new Error(`HTTPエラー！ステータス: ${response.status} - ${response.statusText}`);
+                    throw new Error(`HTTPエラー！ステータス: ${response.status}`);
                 }
-                
+
                 const data = await response.json();
-                
+                console.log("GASから受信したデータ:", data);
+
                 if (data.questions && data.questions.length > 0) {
-                    questionsByCategory = data.questions.reduce((acc, q) => {
-                        if (!acc[q.category]) {
-                            acc[q.category] = [];
+                    // カテゴリ別に質問をグループ化
+                    data.questions.forEach(q => {
+                        if (!questionsByCategory[q.category]) {
+                            questionsByCategory[q.category] = [];
                         }
-                        acc[q.category].push(q);
-                        return acc;
-                    }, {});
-                    
+                        questionsByCategory[q.category].push(q);
+                    });
+                    // GASから取得したカテゴリを基に順序を定義
                     orderedCategories = Object.keys(questionsByCategory);
                     if (orderedCategories.length > 0) {
                         renderStep();
-                        showSection('questions-section'); // 成功した場合のみ質問セクションを表示
                     } else {
-                        throw new Error("質問のカテゴリが定義されていません。スプレッドシートをご確認ください。");
+                        console.error("質問のカテゴリが定義されていません。");
+                        alert("質問のカテゴリが定義されていないため、アプリを起動できませんでした。スプレッドシートを確認してください。");
                     }
                 } else {
-                    throw new Error("質問のロードに失敗しました。GASのURL、デプロイ設定、またはスプレッドシートの入力内容を確認してください。");
+                    console.error("質問の取得に失敗しました:", data.error || "質問データが空です。");
+                    alert("質問のロードに失敗しました。GASのURLが正しいか、デプロイ設定が「全員」になっているか、スプレッドシートに質問が入力されているか確認してください。");
                 }
             } catch (error) {
                 console.error("質問のフェッチ中にエラーが発生しました:", error);
-                errorMessageElement.textContent = `データの取得中にエラーが発生しました: ${error.message}`;
-                showSection('error-section'); // エラーが発生した場合、エラーセクションを表示
+                alert("質問のロード中にネットワークエラーが発生しました。GASのURLが正しいか確認してください。");
             }
         }
 
         // 現在のステップの質問をレンダリングする
         function renderStep() {
             questionsContainer.innerHTML = '';
+            // 質問データが存在するか確認
             const currentCategory = orderedCategories[currentStep];
             const questions = questionsByCategory[currentCategory];
 
             if (!questions || questions.length === 0) {
-                errorMessageElement.textContent = `カテゴリ '${currentCategory}' に質問が見つかりませんでした。スプレッドシートをご確認ください。`;
-                showSection('error-section');
+                console.error(`カテゴリ '${currentCategory}' に質問が見つかりませんでした。`);
+                alert(`カテゴリ '${currentCategory}' に質問が見つかりませんでした。スプレッドシートを確認してください。`);
                 return;
             }
 
+            // ステップの情報を更新
             stepTitle.textContent = `${currentCategory}の質問`;
             stepInfo.textContent = `ステップ ${currentStep + 1} / ${orderedCategories.length}`;
-            prevButton.classList.toggle('hidden', currentStep === 0);
-            nextButton.textContent = currentStep === orderedCategories.length - 1 ? '結果を見る' : '次へ';
-            
+
+            // 前へボタンの表示/非表示
+            if (currentStep === 0) {
+                prevButton.classList.add('hidden');
+            } else {
+                prevButton.classList.remove('hidden');
+            }
+
+            // 次へボタンのテキストを更新
+            if (currentStep === orderedCategories.length - 1) {
+                nextButton.textContent = '結果を見る';
+            } else {
+                nextButton.textContent = '次へ';
+            }
+            nextButton.classList.remove('hidden');
+
             questions.forEach(q => {
                 const questionDiv = document.createElement('div');
                 questionDiv.className = 'bg-gray-50 p-4 rounded-lg';
-                const questionId = q.id.toString();
+                // q.idをNumber型ではなく文字列として扱う
+                const questionId = q.id.toString(); 
                 questionDiv.innerHTML = `
                     <p class="text-md font-bold text-gray-700">${q.text}</p>
                     <div class="mt-2 flex items-center space-x-6">
@@ -262,18 +194,13 @@
 
         // 次のステップに進む
         function goToNextStep() {
+            // 現在のステップの回答を保存
             const currentCategory = orderedCategories[currentStep];
             const questions = questionsByCategory[currentCategory];
-
-            if (!questions) {
-                errorMessageElement.textContent = "質問データがまだロードされていません。しばらく待ってから再度お試しください。";
-                showSection('error-section');
-                return;
-            }
-
             const isAllAnswered = questions.every(q => document.querySelector(`input[name="q-${q.id.toString()}"]:checked`));
 
             if (!isAllAnswered) {
+                // アラートの文言をより分かりやすく修正
                 alert("このステップのすべての質問に回答すると、次の質問に進めます。");
                 return;
             }
@@ -281,7 +208,7 @@
             questions.forEach(q => {
                 const selected = document.querySelector(`input[name="q-${q.id.toString()}"]:checked`);
                 if (selected) {
-                    userAnswers[q.id.toString()] = selected.value;
+                    userAnswers[q.id.toString()] = selected.value; // 回答を文字列として保存
                 }
             });
 
@@ -303,44 +230,41 @@
 
         // 質問の回答を送信する
         async function submitAnswers() {
-            showSection('loading-section');
-            
-            const checkedAnswers = Object.keys(userAnswers).filter(id => userAnswers[id] === "1");
+            questionsSection.classList.add('hidden');
+            loadingSection.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
 
-            const payload = {
-                type: 'diagnose',
-                answers: checkedAnswers,
-                userInfo: userInfo
-            };
-            
-            console.log("Submitting answers to URL:", GAS_URL);
+            const checkedAnswers = Object.keys(userAnswers)
+                .filter(id => userAnswers[id] === "1");
+
+            const answersParam = encodeURIComponent(JSON.stringify(checkedAnswers));
+            const fullUrl = `${GAS_URL}?type=diagnose&answers=${answersParam}`;
+            console.log("診断リクエストURL:", fullUrl); // デバッグ用
 
             try {
-                const response = await fetch(GAS_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload),
-                    mode: 'cors'
-                });
+                // GASのdoGet関数がURLパラメータを期待するため、GETリクエストを使用
+                const response = await fetch(fullUrl);
 
                 if (!response.ok) {
-                    throw new Error(`HTTPエラー！ステータス: ${response.status} - ${response.statusText}`);
+                    throw new Error(`HTTPエラー！ステータス: ${response.status}`);
                 }
 
                 const data = await response.json();
+                console.log("診断結果のデータ:", data); // デバッグ用
 
+                loadingSection.classList.add('hidden');
                 if (data.diagnosis) {
                     showResult(data.diagnosis);
-                    showSection('results-section');
                 } else {
-                    throw new Error(`診断結果の取得に失敗しました: ${data.error}`);
+                    console.error("診断結果の取得に失敗しました:", data.error);
+                    questionsSection.classList.remove('hidden');
+                    alert("診断結果の取得に失敗しました。GASのコードを確認してください。");
                 }
             } catch (error) {
                 console.error("診断のフェッチ中にエラーが発生しました:", error);
-                errorMessageElement.textContent = `診断中にエラーが発生しました: ${error.message}`;
-                showSection('error-section');
+                loadingSection.classList.add('hidden');
+                questionsSection.classList.remove('hidden');
+                alert("診断中にネットワークエラーが発生しました。GASのURLが正しいか確認してください。");
             }
         }
 
@@ -361,11 +285,8 @@
                 scores.push(r.score);
             });
 
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
-
-            chartInstance = new Chart(chartElement.getContext('2d'), {
+            // チャート描画
+            new Chart(chartElement.getContext('2d'), {
                 type: 'radar',
                 data: {
                     labels: labels,
@@ -404,7 +325,7 @@
                                 }
                             },
                             suggestedMin: 0,
-                            suggestedMax: 20,
+                            suggestedMax: 5,
                             ticks: {
                                 display: false
                             }
@@ -412,32 +333,20 @@
                     }
                 }
             });
+
+            resultsSection.classList.remove('hidden');
         }
 
         // イベントリスナー
         startButton.addEventListener('click', () => {
-            showSection('user-info-section');
-        });
-
-        userInfoForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            userInfo = {
-                lastName: document.getElementById('last-name').value,
-                firstName: document.getElementById('first-name').value,
-                companyName: document.getElementById('company-name').value,
-                department: document.getElementById('department').value,
-                age: document.getElementById('age').value,
-                gender: document.getElementById('gender').value,
-            };
-            loadQuestions(); 
+            startSection.classList.add('hidden');
+            questionsSection.classList.remove('hidden');
+            loadQuestions();
         });
 
         nextButton.addEventListener('click', goToNextStep);
         prevButton.addEventListener('click', goToPrevStep);
-        restartButton.addEventListener('click', () => {
-            location.reload();
-        });
-        
+
     </script>
 </body>
 
