@@ -191,16 +191,19 @@
                 startText.textContent = "質問を読み込み中です...";
                 startLoadingIndicator.classList.remove('hidden');
                 
-                console.log(`質問をロード中... フェッチURL: ${GAS_URL}?type=questions`);
-                const response = await fetch(`${GAS_URL}?type=questions`);
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({ type: 'questions' })
+                });
 
                 if (!response.ok) {
-                    console.error(`質問のフェッチに失敗しました。HTTPステータス: ${response.status}`);
                     throw new Error(`HTTPエラー！ステータス: ${response.status}`);
                 }
 
                 const data = await response.json();
-                console.log("GASから受信したデータ:", data);
 
                 if (data.questions && data.questions.length > 0) {
                     data.questions.forEach(q => {
@@ -217,7 +220,6 @@
                     startButton.classList.remove('hidden');
 
                 } else {
-                    console.error("質問の取得に失敗しました:", data.error || "質問データが空です。");
                     startText.textContent = "質問の読み込みに失敗しました。";
                     startLoadingIndicator.classList.add('hidden');
                     alert("質問のロードに失敗しました。GASのURLが正しいか、デプロイ設定が「全員」になっているか、スプレッドシートに質問が入力されているか確認してください。");
@@ -237,7 +239,6 @@
             const questions = questionsByCategory[currentCategory];
 
             if (!questions || questions.length === 0) {
-                console.error(`カテゴリ '${currentCategory}' に質問が見つかりませんでした。`);
                 alert(`カテゴリ '${currentCategory}' に質問が見つかりませんでした。スプレッドシートを確認してください。`);
                 return;
             }
@@ -326,28 +327,30 @@
 
             const checkedAnswers = Object.keys(userAnswers).filter(id => userAnswers[id] === "1");
 
-            const answersParam = encodeURIComponent(JSON.stringify(checkedAnswers));
-            const userInfoParam = encodeURIComponent(JSON.stringify(userInfo));
-            
-            const fullUrl = `${GAS_URL}?type=diagnose&answers=${answersParam}&userInfo=${userInfoParam}`;
-            console.log("診断リクエストURL:", fullUrl);
+            const formData = new URLSearchParams();
+            formData.append('type', 'diagnose');
+            formData.append('answers', JSON.stringify(checkedAnswers));
+            formData.append('userInfo', JSON.stringify(userInfo));
 
             try {
-                const response = await fetch(fullUrl);
+                const response = await fetch(GAS_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData
+                });
 
                 if (!response.ok) {
-                    console.error(`診断のフェッチに失敗しました。HTTPステータス: ${response.status}`);
                     throw new Error(`HTTPエラー！ステータス: ${response.status}`);
                 }
 
                 const data = await response.json();
-                console.log("診断結果のデータ:", data);
 
                 loadingSection.classList.add('hidden');
                 if (data.diagnosis) {
                     showResult(data.diagnosis);
                 } else {
-                    console.error("診断結果の取得に失敗しました:", data.error);
                     questionsSection.classList.remove('hidden');
                     alert("診断結果の取得に失敗しました。GASのコードを確認してください。");
                 }
