@@ -29,11 +29,12 @@
 
         <!-- スタート画面 -->
         <div id="start-section" class="flex flex-col items-center justify-center space-y-6">
-            <p class="text-lg text-gray-700 text-center">
+            <p id="start-text" class="text-lg text-gray-700 text-center">
                 質問に「はい」か「いいえ」で答えてください。
             </p>
+            <div id="start-loading-indicator" class="hidden animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
             <button id="start-button"
-                class="bg-green-600 text-white font-bold py-4 px-10 rounded-full text-xl shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-105">
+                class="hidden bg-green-600 text-white font-bold py-4 px-10 rounded-full text-xl shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-105">
                 Start
             </button>
         </div>
@@ -143,10 +144,12 @@
 
     <script>
         // Google Apps ScriptのウェブアプリURL
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwuPfrVE7tev3hYIdOMCmfPk01diVy-EcEftvLILkT9U9_-mc32v86dJR6bcGR70dhzSQ/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxgSitHKyLExV-G5Pa3UIOrQERGVFf-VPfEO4Cw8kSacpn3TYJp7U6EWhzghpH1r4S8dw/exec";
 
         const startSection = document.getElementById('start-section');
         const startButton = document.getElementById('start-button');
+        const startText = document.getElementById('start-text');
+        const startLoadingIndicator = document.getElementById('start-loading-indicator');
         const userInfoSection = document.getElementById('user-info-section');
         const questionsSection = document.getElementById('questions-section');
         const questionsContainer = document.getElementById('questions-container');
@@ -166,9 +169,28 @@
         let userInfo = {};
         let currentStep = 0;
 
+        // セキュリティのために、HTMLエンコーディングを行うヘルパー関数
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // ページの読み込み完了時に質問を事前取得する
+        window.addEventListener('load', () => {
+            loadQuestions();
+        });
+
         // 質問をロードして表示する
         async function loadQuestions() {
             try {
+                // 読み込み中UIを表示
+                startText.textContent = "質問を読み込み中です...";
+                startLoadingIndicator.classList.remove('hidden');
+                
                 console.log(`質問をロード中... フェッチURL: ${GAS_URL}?type=questions`);
                 const response = await fetch(`${GAS_URL}?type=questions`);
 
@@ -188,18 +210,22 @@
                         questionsByCategory[q.category].push(q);
                     });
                     orderedCategories = Object.keys(questionsByCategory);
-                    if (orderedCategories.length > 0) {
-                        renderStep();
-                    } else {
-                        console.error("質問のカテゴリが定義されていません。");
-                        alert("質問のカテゴリが定義されていないため、アプリを起動できませんでした。スプレッドシートを確認してください。");
-                    }
+                    
+                    // 読み込み完了後、スタートボタンを表示
+                    startText.textContent = "質問に「はい」か「いいえ」で答えてください。";
+                    startLoadingIndicator.classList.add('hidden');
+                    startButton.classList.remove('hidden');
+
                 } else {
                     console.error("質問の取得に失敗しました:", data.error || "質問データが空です。");
+                    startText.textContent = "質問の読み込みに失敗しました。";
+                    startLoadingIndicator.classList.add('hidden');
                     alert("質問のロードに失敗しました。GASのURLが正しいか、デプロイ設定が「全員」になっているか、スプレッドシートに質問が入力されているか確認してください。");
                 }
             } catch (error) {
                 console.error("質問のフェッチ中にエラーが発生しました:", error);
+                startText.textContent = "ネットワークエラーが発生しました。";
+                startLoadingIndicator.classList.add('hidden');
                 alert("質問のロード中にネットワークエラーが発生しました。GASのURLが正しいか確認してください。");
             }
         }
@@ -238,7 +264,7 @@
                 questionDiv.className = 'bg-gray-50 p-4 rounded-lg';
                 const questionId = q.id.toString(); 
                 questionDiv.innerHTML = `
-                    <p class="text-md font-bold text-gray-700">${q.text}</p>
+                    <p class="text-md font-bold text-gray-700">${escapeHtml(q.text)}</p>
                     <div class="mt-2 flex items-center space-x-6">
                         <label class="flex items-center space-x-2">
                             <input type="radio" name="q-${questionId}" value="1" class="h-4 w-4 text-blue-600 focus:ring-blue-500" ${userAnswers[questionId] === "1" ? 'checked' : ''}>
@@ -342,11 +368,11 @@
             diagnosis.forEach(r => {
                 resultsContainer.innerHTML += `
                     <div class="p-4 bg-blue-50 rounded-lg">
-                        <p class="text-lg font-medium text-blue-800">${r.category}: スコア ${r.score}</p>
-                        <p class="mt-1 text-blue-600">傾向: ${r.tendency}</p>
+                        <p class="text-lg font-medium text-blue-800">${escapeHtml(r.category)}: スコア ${escapeHtml(r.score.toString())}</p>
+                        <p class="mt-1 text-blue-600">傾向: ${escapeHtml(r.tendency)}</p>
                     </div>
                 `;
-                labels.push(r.category);
+                labels.push(escapeHtml(r.category));
                 scores.push(r.score);
             });
 
@@ -416,18 +442,19 @@
                 return;
             }
 
+            // セキュリティ対策: ユーザー入力データをHTMLエンコードする
             userInfo = {
-                lastName: lastName,
-                firstName: firstName,
-                companyName: document.getElementById('company-name').value.trim(),
-                department: document.getElementById('department').value.trim(),
+                lastName: escapeHtml(lastName),
+                firstName: escapeHtml(firstName),
+                companyName: escapeHtml(document.getElementById('company-name').value.trim()),
+                department: escapeHtml(document.getElementById('department').value.trim()),
                 age: document.getElementById('age').value,
                 gender: document.querySelector('input[name="gender"]:checked').value
             };
             
             userInfoSection.classList.add('hidden');
             questionsSection.classList.remove('hidden');
-            loadQuestions();
+            renderStep();
         });
 
         nextButton.addEventListener('click', goToNextStep);
