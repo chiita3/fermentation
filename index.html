@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +13,6 @@
         }
     </style>
 </head>
-
 <body class="bg-gray-100 text-gray-800 antialiased flex flex-col items-center min-h-screen p-4">
 
     <div class="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 space-y-8">
@@ -67,8 +65,10 @@
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycby2jMMTV12WAUAXYAovnzqUL5EpuwNc96RcyOsDNAJeMlxm4qVIlFiWYkLWDAGy3_w8OQ/exec";
+        // デプロイ後、「アクセスできるユーザー」を「全員」に設定して発行された新しいURLが必要。
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyA2nnV4dUSJ9x9KaqUQjU9o37TNPkLb_Fl2voAi55P7hw_efpytxAcXAWh20ho25QE9A/exec";
 
+        // HTML要素の取得
         const startSection = document.getElementById('start-section');
         const startButton = document.getElementById('start-button');
         const questionsSection = document.getElementById('questions-section');
@@ -108,6 +108,7 @@
                         }
                         questionsByCategory[q.category].push(q);
                     });
+                    // GASから取得したカテゴリを基に順序を定義
                     orderedCategories = Object.keys(questionsByCategory);
                     if (orderedCategories.length > 0) {
                         renderStep();
@@ -128,6 +129,7 @@
         // 現在のステップの質問をレンダリングする
         function renderStep() {
             questionsContainer.innerHTML = '';
+            // 質問データが存在するか確認
             const currentCategory = orderedCategories[currentStep];
             const questions = questionsByCategory[currentCategory];
 
@@ -137,15 +139,18 @@
                 return;
             }
 
+            // ステップの情報を更新
             stepTitle.textContent = `${currentCategory}の質問`;
             stepInfo.textContent = `ステップ ${currentStep + 1} / ${orderedCategories.length}`;
 
+            // 前へボタンの表示/非表示
             if (currentStep === 0) {
                 prevButton.classList.add('hidden');
             } else {
                 prevButton.classList.remove('hidden');
             }
 
+            // 次へボタンのテキストを更新
             if (currentStep === orderedCategories.length - 1) {
                 nextButton.textContent = '結果を見る';
             } else {
@@ -156,7 +161,8 @@
             questions.forEach(q => {
                 const questionDiv = document.createElement('div');
                 questionDiv.className = 'bg-gray-50 p-4 rounded-lg';
-                const questionId = q.id.toString();
+                // q.idをNumber型ではなく文字列として扱う
+                const questionId = q.id.toString(); 
                 questionDiv.innerHTML = `
                     <p class="text-md font-bold text-gray-700">${q.text}</p>
                     <div class="mt-2 flex items-center space-x-6">
@@ -179,13 +185,14 @@
             const currentCategory = orderedCategories[currentStep];
             const questions = questionsByCategory[currentCategory];
             
+            // 現在のステップの回答を保存
             let isAllAnswered = true;
             questions.forEach(q => {
                 const selected = document.querySelector(`input[name="q-${q.id.toString()}"]:checked`);
                 if (!selected) {
                     isAllAnswered = false;
                 } else {
-                    userAnswers[q.id.toString()] = selected.value;
+                    userAnswers[q.id.toString()] = selected.value; // 回答を文字列として保存
                 }
             });
 
@@ -216,33 +223,40 @@
             loadingSection.classList.remove('hidden');
             resultsSection.classList.add('hidden');
 
+            // カテゴリ別にスコアを計算
             let categoryScores = {};
+            let isAllQuestionsAnswered = true; // 全質問回答チェック用フラグ
             orderedCategories.forEach(category => {
                 const questions = questionsByCategory[category];
                 let score = 0;
                 questions.forEach(q => {
+                    // バリデーション: 回答が未選択の場合は送信しない
+                    if (!userAnswers[q.id.toString()]) {
+                        console.error(`質問ID ${q.id} が未回答です。`);
+                        isAllQuestionsAnswered = false;
+                        return;
+                    }
                     if (userAnswers[q.id.toString()] === "1") {
                         score += Number(q.score);
                     }
                 });
                 categoryScores[category] = score;
             });
-
-            const requestBody = {
-                categoryScores: categoryScores
-            };
             
-            const fullUrl = `${GAS_URL}?type=diagnose`;
+            // バリデーション: 全ての質問に回答しているか再確認
+            if (!isAllQuestionsAnswered) {
+                alert("すべての質問に回答してください。");
+                loadingSection.classList.add('hidden');
+                questionsSection.classList.remove('hidden');
+                return;
+            }
+
+            const scoresParam = encodeURIComponent(JSON.stringify(categoryScores));
+            const fullUrl = `${GAS_URL}?type=diagnose&categoryScores=${scoresParam}`;
             console.log("診断リクエストURL:", fullUrl);
 
             try {
-                const response = await fetch(fullUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(requestBody)
-                });
+                const response = await fetch(fullUrl);
 
                 if (!response.ok) {
                     throw new Error(`HTTPエラー！ステータス: ${response.status}`);
@@ -284,6 +298,7 @@
                 scores.push(r.score);
             });
 
+            // チャート描画
             new Chart(chartElement.getContext('2d'), {
                 type: 'radar',
                 data: {
@@ -347,5 +362,4 @@
 
     </script>
 </body>
-
 </html>
