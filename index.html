@@ -78,7 +78,7 @@
 
     <script>
         // デプロイ後、「アクセスできるユーザー」を「全員」に設定して発行された新しいURLが必要。
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxqQfj4Jo2xtCS3Nj4c5FyM1xPxIYrbls0_VjnTvKazpOF2QUeip1yTfwqkv-8m9vmXrg/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwq6K-eV-jvLU3ngq7_sQDmwDINkXzLymAaX3u9wvCi_kgkaK5vOzQh4jQ9v5EqBGtWXg/exec";
 
         // HTML要素の取得
         const startSection = document.getElementById('start-section');
@@ -95,48 +95,72 @@
         const stepInfo = document.getElementById('step-info');
 
         let questionsByCategory = {};
-        let orderedCategories = [];
-        let userAnswers = {};
-        let currentStep = 0;
+        let orderedCategories = [];
+        let userAnswers = {};
+        let currentStep = 0;
+        let csrfToken = null; // グローバル変数としてトークンを保持
 
-        // 質問をロードして表示する
-        async function loadQuestions() {
-            try {
-                console.log(`質問をロード中... フェッチURL: ${GAS_URL}?type=questions`);
-                const response = await fetch(`${GAS_URL}?type=questions`);
+        // CSRFトークンをロードする関数
+        async function loadCsrfToken() {
+            try {
+                console.log("CSRFトークンを取得中...");
+                const response = await fetch(`${GAS_URL}?type=csrfToken`);
+                const data = await response.json();
+                if (data.csrfToken) {
+                    csrfToken = data.csrfToken;
+                    console.log("CSRFトークンを取得しました。");
+                } else {
+                    throw new Error("CSRFトークンの取得に失敗しました。");
+                }
+            } catch (error) {
+                console.error("CSRFトークン取得中にエラーが発生しました:", error);
+                alert("初期設定に失敗しました。GASの設定を確認してください。");
+                return false;
+            }
+            return true;
+        }
 
-                if (!response.ok) {
-                    throw new Error(`HTTPエラー！ステータス: ${response.status}`);
-                }
+        // 質問をロードして表示する
+        async function loadQuestions() {
+            const tokenLoaded = await loadCsrfToken();
+            if (!tokenLoaded) {
+                return;
+            }
+            try {
+                console.log(`質問をロード中... フェッチURL: ${GAS_URL}?type=questions`);
+                const response = await fetch(`${GAS_URL}?type=questions`);
 
-                const data = await response.json();
-                console.log("GASから受信したデータ:", data);
+                if (!response.ok) {
+                    throw new Error(`HTTPエラー！ステータス: ${response.status}`);
+                }
 
-                if (data.questions && data.questions.length > 0) {
-                    // カテゴリ別に質問をグループ化
-                    data.questions.forEach(q => {
-                        if (!questionsByCategory[q.category]) {
-                            questionsByCategory[q.category] = [];
-                        }
-                        questionsByCategory[q.category].push(q);
-                    });
-                    // GASから取得したカテゴリを基に順序を定義
-                    orderedCategories = Object.keys(questionsByCategory);
-                    if (orderedCategories.length > 0) {
-                        renderStep();
-                    } else {
-                        console.error("質問のカテゴリが定義されていません。");
-                        alert("質問のカテゴリが定義されていないため、アプリを起動できませんでした。スプレッドシートを確認してください。");
-                    }
-                } else {
-                    console.error("質問の取得に失敗しました:", data.error || "質問データが空です。");
-                    alert("質問のロードに失敗しました。GASのURLが正しいか、デプロイ設定が「全員」になっているか、スプレッドシートに質問が入力されているか確認してください。");
-                }
-            } catch (error) {
-                console.error("質問のフェッチ中にエラーが発生しました:", error);
-                alert("質問のロード中にネットワークエラーが発生しました。GASのURLが正しいか確認してください。");
-            }
-        }
+                const data = await response.json();
+                console.log("GASから受信したデータ:", data);
+
+                if (data.questions && data.questions.length > 0) {
+                    // カテゴリ別に質問をグループ化
+                    data.questions.forEach(q => {
+                        if (!questionsByCategory[q.category]) {
+                            questionsByCategory[q.category] = [];
+                        }
+                        questionsByCategory[q.category].push(q);
+                    });
+                    orderedCategories = Object.keys(questionsByCategory);
+                    if (orderedCategories.length > 0) {
+                        renderStep();
+                    } else {
+                        console.error("質問のカテゴリが定義されていません。");
+                        alert("質問のカテゴリが定義されていないため、アプリを起動できませんでした。スプレッドシートを確認してください。");
+                    }
+                } else {
+                    console.error("質問の取得に失敗しました:", data.error || "質問データが空です。");
+                    alert("質問のロードに失敗しました。GASのURLが正しいか、デプロイ設定が「全員」になっているか、スプレッドシートに質問が入力されているか確認してください。");
+                }
+            } catch (error) {
+                console.error("質問のフェッチ中にエラーが発生しました:", error);
+                alert("質問のロード中にネットワークエラーが発生しました。GASのURLが正しいか確認してください。");
+            }
+        }
 
         // 現在のステップの質問をレンダリングする
         function renderStep() {
@@ -248,12 +272,22 @@
                 categoryScores[category] = score;
             });
 
-            const scoresParam = encodeURIComponent(JSON.stringify(categoryScores));
-            const fullUrl = `${GAS_URL}?type=diagnose&categoryScores=${scoresParam}`;
+            // POSTリクエストの準備
+            const requestBody = {
+                categoryScores: categoryScores
+            };
+            
+            const fullUrl = `${GAS_URL}?type=diagnose&csrfToken=${csrfToken}`;
             console.log("診断リクエストURL:", fullUrl);
 
             try {
-                const response = await fetch(fullUrl);
+                const response = await fetch(fullUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
 
                 if (!response.ok) {
                     throw new Error(`HTTPエラー！ステータス: ${response.status}`);
@@ -347,12 +381,12 @@
             resultsSection.classList.remove('hidden');
         }
 
-        // イベントリスナー
-        startButton.addEventListener('click', () => {
-            startSection.classList.add('hidden');
-            questionsSection.classList.remove('hidden');
-            loadQuestions();
-        });
+        // イベントリスナー
+        startButton.addEventListener('click', () => {
+            startSection.classList.add('hidden');
+            questionsSection.classList.remove('hidden');
+            loadQuestions();
+        });
 
         nextButton.addEventListener('click', goToNextStep);
         prevButton.addEventListener('click', goToPrevStep);
