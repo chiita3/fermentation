@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,6 +14,7 @@
         }
     </style>
 </head>
+
 <body class="bg-gray-100 text-gray-800 antialiased flex flex-col items-center min-h-screen p-4">
 
     <div class="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 space-y-8">
@@ -20,7 +22,7 @@
             <h1 class="text-4xl font-bold text-gray-900">発酵診断</h1>
             <p class="mt-2 text-gray-600">あなたの揺らぎを診断します。</p>
         </header>
-        
+
         <div id="start-section" class="flex flex-col items-center justify-center space-y-6">
             <p class="text-lg text-gray-700 text-center">
                 質問に「はい」か「いいえ」で答えてください。
@@ -48,8 +50,9 @@
             </div>
         </div>
 
-        <div id="loading-section" class="hidden flex justify-center items-center">
+        <div id="loading-section" class="hidden flex flex-col items-center justify-center space-y-4">
             <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+            <p class="text-lg font-medium text-gray-600">お待ちください...</p>
         </div>
 
         <div id="results-section" class="hidden space-y-6">
@@ -61,12 +64,18 @@
                     <canvas id="chart"></canvas>
                 </div>
             </div>
+            <div class="flex justify-center mt-8">
+                <button id="start-over-button"
+                    class="bg-gray-500 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-gray-600 transition duration-300 transform hover:scale-105">
+                    終了
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
         // デプロイ後、「アクセスできるユーザー」を「全員」に設定して発行された新しいURLが必要。
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwts4EeAJCCbRTjgdY_aWF_1BL6X1oYzP3kVlHY1qqvjYBqqtAjaWgmaoLXBIMbi-evJg/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxWCq_MA4vs5Zl1XxzByO7pIltQtm4hCAemSc96uo7k30ScfOfVYgD3n3IEglMaJwxNfQ/exec";
 
         // HTML要素の取得
         const startSection = document.getElementById('start-section');
@@ -81,6 +90,8 @@
         const chartElement = document.getElementById('chart');
         const stepTitle = document.getElementById('step-title');
         const stepInfo = document.getElementById('step-info');
+        // 終了ボタンの取得
+        const startOverButton = document.getElementById('start-over-button');
 
         let questionsByCategory = {};
         let orderedCategories = [];
@@ -89,6 +100,10 @@
 
         // 質問をロードして表示する
         async function loadQuestions() {
+            // 質問セクションを非表示にし、ローディングを表示
+            questionsSection.classList.add('hidden');
+            loadingSection.classList.remove('hidden');
+
             try {
                 console.log(`質問をロード中... フェッチURL: ${GAS_URL}?type=questions`);
                 const response = await fetch(`${GAS_URL}?type=questions`);
@@ -112,6 +127,7 @@
                     orderedCategories = Object.keys(questionsByCategory);
                     if (orderedCategories.length > 0) {
                         renderStep();
+                        questionsSection.classList.remove('hidden');
                     } else {
                         console.error("質問のカテゴリが定義されていません。");
                         alert("質問のカテゴリが定義されていないため、アプリを起動できませんでした。スプレッドシートを確認してください。");
@@ -123,6 +139,8 @@
             } catch (error) {
                 console.error("質問のフェッチ中にエラーが発生しました:", error);
                 alert("質問のロード中にネットワークエラーが発生しました。GASのURLが正しいか確認してください。");
+            } finally {
+                loadingSection.classList.add('hidden');
             }
         }
 
@@ -162,7 +180,7 @@
                 const questionDiv = document.createElement('div');
                 questionDiv.className = 'bg-gray-50 p-4 rounded-lg';
                 // q.idをNumber型ではなく文字列として扱う
-                const questionId = q.id.toString(); 
+                const questionId = q.id.toString();
                 questionDiv.innerHTML = `
                     <p class="text-md font-bold text-gray-700">${q.text}</p>
                     <div class="mt-2 flex items-center space-x-6">
@@ -184,7 +202,7 @@
         function goToNextStep() {
             const currentCategory = orderedCategories[currentStep];
             const questions = questionsByCategory[currentCategory];
-            
+
             // 現在のステップの回答を保存
             let isAllAnswered = true;
             questions.forEach(q => {
@@ -208,7 +226,7 @@
                 submitAnswers();
             }
         }
-        
+
         // 前のステップに戻る
         function goToPrevStep() {
             if (currentStep > 0) {
@@ -225,31 +243,16 @@
 
             // カテゴリ別にスコアを計算
             let categoryScores = {};
-            let isAllQuestionsAnswered = true; // 全質問回答チェック用フラグ
             orderedCategories.forEach(category => {
                 const questions = questionsByCategory[category];
                 let score = 0;
                 questions.forEach(q => {
-                    // バリデーション: 回答が未選択の場合は送信しない
-                    if (!userAnswers[q.id.toString()]) {
-                        console.error(`質問ID ${q.id} が未回答です。`);
-                        isAllQuestionsAnswered = false;
-                        return;
-                    }
                     if (userAnswers[q.id.toString()] === "1") {
                         score += Number(q.score);
                     }
                 });
                 categoryScores[category] = score;
             });
-            
-            // バリデーション: 全ての質問に回答しているか再確認
-            if (!isAllQuestionsAnswered) {
-                alert("すべての質問に回答してください。");
-                loadingSection.classList.add('hidden');
-                questionsSection.classList.remove('hidden');
-                return;
-            }
 
             const scoresParam = encodeURIComponent(JSON.stringify(categoryScores));
             const fullUrl = `${GAS_URL}?type=diagnose&categoryScores=${scoresParam}`;
@@ -265,7 +268,6 @@
                 const data = await response.json();
                 console.log("診断結果のデータ:", data);
 
-                loadingSection.classList.add('hidden');
                 if (data.diagnosis) {
                     showResult(data.diagnosis);
                 } else {
@@ -275,13 +277,14 @@
                 }
             } catch (error) {
                 console.error("診断のフェッチ中にエラーが発生しました:", error);
-                loadingSection.classList.add('hidden');
                 questionsSection.classList.remove('hidden');
                 alert("診断中にネットワークエラーが発生しました。GASのURLが正しいか確認してください。");
+            } finally {
+                loadingSection.classList.add('hidden');
             }
         }
 
-        // 結果を表示する（変更なし）
+        // 結果を表示する
         function showResult(diagnosis) {
             resultsContainer.innerHTML = '';
             const labels = [];
@@ -353,13 +356,17 @@
         // イベントリスナー
         startButton.addEventListener('click', () => {
             startSection.classList.add('hidden');
-            questionsSection.classList.remove('hidden');
             loadQuestions();
         });
 
         nextButton.addEventListener('click', goToNextStep);
         prevButton.addEventListener('click', goToPrevStep);
 
+        // 終了ボタンのイベントリスナー
+        startOverButton.addEventListener('click', () => {
+            location.reload(); // ページを再読み込みして初期状態に戻す
+        });
     </script>
 </body>
+
 </html>
