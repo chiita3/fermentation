@@ -12,6 +12,20 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+
+        /* 終了ボタンを右下に配置するためのスタイル */
+        #results-section {
+            position: relative;
+            padding-bottom: 70px;
+            /* ボタンの高さ分余白を追加 */
+        }
+
+        #start-over-button-container {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            padding: 20px;
+        }
     </style>
 </head>
 
@@ -29,8 +43,45 @@
             </p>
             <button id="start-button"
                 class="bg-green-600 text-white font-bold py-4 px-10 rounded-full text-xl shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-105">
-                Start
+                開始
             </button>
+        </div>
+
+        <div id="user-info-section" class="hidden space-y-6">
+            <h2 class="text-2xl font-semibold border-b-2 pb-2">あなたの情報を入力してください</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="last-name" class="block text-sm font-medium text-gray-700">苗字</label>
+                    <input type="text" id="last-name"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="first-name" class="block text-sm font-medium text-gray-700">氏名</label>
+                    <input type="text" id="first-name"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="age" class="block text-sm font-medium text-gray-700">年齢</label>
+                    <input type="number" id="age"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="gender" class="block text-sm font-medium text-gray-700">性別</label>
+                    <select id="gender"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">選択してください</option>
+                        <option value="男性">男性</option>
+                        <option value="女性">女性</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-center mt-6">
+                <button id="user-info-next-button"
+                    class="bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105">
+                    次へ
+                </button>
+            </div>
         </div>
 
         <div id="questions-section" class="hidden space-y-6">
@@ -64,7 +115,7 @@
                     <canvas id="chart"></canvas>
                 </div>
             </div>
-            <div class="flex justify-center mt-8">
+            <div id="start-over-button-container">
                 <button id="start-over-button"
                     class="bg-gray-500 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-gray-600 transition duration-300 transform hover:scale-105">
                     終了
@@ -75,11 +126,13 @@
 
     <script>
         // デプロイ後、「アクセスできるユーザー」を「全員」に設定して発行された新しいURLが必要。
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxWCq_MA4vs5Zl1XxzByO7pIltQtm4hCAemSc96uo7k30ScfOfVYgD3n3IEglMaJwxNfQ/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwXUIbKP5dzipK2C2bO-1KrPsnnreJsCNUJ3kJh-wJUsgdLsJ6FwG1N0mi6Zh1QodopvA/exec";
 
         // HTML要素の取得
         const startSection = document.getElementById('start-section');
         const startButton = document.getElementById('start-button');
+        const userInfoSection = document.getElementById('user-info-section');
+        const userInfoNextButton = document.getElementById('user-info-next-button');
         const questionsSection = document.getElementById('questions-section');
         const questionsContainer = document.getElementById('questions-container');
         const nextButton = document.getElementById('next-button');
@@ -90,17 +143,16 @@
         const chartElement = document.getElementById('chart');
         const stepTitle = document.getElementById('step-title');
         const stepInfo = document.getElementById('step-info');
-        // 終了ボタンの取得
         const startOverButton = document.getElementById('start-over-button');
 
         let questionsByCategory = {};
         let orderedCategories = [];
         let userAnswers = {};
         let currentStep = 0;
+        let userInfo = {}; // ユーザー情報を格納するオブジェクト
 
         // 質問をロードして表示する
         async function loadQuestions() {
-            // 質問セクションを非表示にし、ローディングを表示
             questionsSection.classList.add('hidden');
             loadingSection.classList.remove('hidden');
 
@@ -116,14 +168,12 @@
                 console.log("GASから受信したデータ:", data);
 
                 if (data.questions && data.questions.length > 0) {
-                    // カテゴリ別に質問をグループ化
                     data.questions.forEach(q => {
                         if (!questionsByCategory[q.category]) {
                             questionsByCategory[q.category] = [];
                         }
                         questionsByCategory[q.category].push(q);
                     });
-                    // GASから取得したカテゴリを基に順序を定義
                     orderedCategories = Object.keys(questionsByCategory);
                     if (orderedCategories.length > 0) {
                         renderStep();
@@ -147,7 +197,6 @@
         // 現在のステップの質問をレンダリングする
         function renderStep() {
             questionsContainer.innerHTML = '';
-            // 質問データが存在するか確認
             const currentCategory = orderedCategories[currentStep];
             const questions = questionsByCategory[currentCategory];
 
@@ -157,18 +206,15 @@
                 return;
             }
 
-            // ステップの情報を更新
             stepTitle.textContent = `${currentCategory}の質問`;
             stepInfo.textContent = `ステップ ${currentStep + 1} / ${orderedCategories.length}`;
 
-            // 前へボタンの表示/非表示
             if (currentStep === 0) {
                 prevButton.classList.add('hidden');
             } else {
                 prevButton.classList.remove('hidden');
             }
 
-            // 次へボタンのテキストを更新
             if (currentStep === orderedCategories.length - 1) {
                 nextButton.textContent = '結果を見る';
             } else {
@@ -179,7 +225,6 @@
             questions.forEach(q => {
                 const questionDiv = document.createElement('div');
                 questionDiv.className = 'bg-gray-50 p-4 rounded-lg';
-                // q.idをNumber型ではなく文字列として扱う
                 const questionId = q.id.toString();
                 questionDiv.innerHTML = `
                     <p class="text-md font-bold text-gray-700">${q.text}</p>
@@ -202,15 +247,14 @@
         function goToNextStep() {
             const currentCategory = orderedCategories[currentStep];
             const questions = questionsByCategory[currentCategory];
-
-            // 現在のステップの回答を保存
+            
             let isAllAnswered = true;
             questions.forEach(q => {
                 const selected = document.querySelector(`input[name="q-${q.id.toString()}"]:checked`);
                 if (!selected) {
                     isAllAnswered = false;
                 } else {
-                    userAnswers[q.id.toString()] = selected.value; // 回答を文字列として保存
+                    userAnswers[q.id.toString()] = selected.value;
                 }
             });
 
@@ -226,7 +270,7 @@
                 submitAnswers();
             }
         }
-
+        
         // 前のステップに戻る
         function goToPrevStep() {
             if (currentStep > 0) {
@@ -241,7 +285,6 @@
             loadingSection.classList.remove('hidden');
             resultsSection.classList.add('hidden');
 
-            // カテゴリ別にスコアを計算
             let categoryScores = {};
             orderedCategories.forEach(category => {
                 const questions = questionsByCategory[category];
@@ -254,8 +297,13 @@
                 categoryScores[category] = score;
             });
 
-            const scoresParam = encodeURIComponent(JSON.stringify(categoryScores));
-            const fullUrl = `${GAS_URL}?type=diagnose&categoryScores=${scoresParam}`;
+            // ユーザー情報とスコアをまとめて送信
+            const postData = {
+                userInfo: userInfo,
+                categoryScores: categoryScores
+            };
+            const scoresParam = encodeURIComponent(JSON.stringify(postData));
+            const fullUrl = `${GAS_URL}?type=diagnose&data=${scoresParam}`;
             console.log("診断リクエストURL:", fullUrl);
 
             try {
@@ -301,7 +349,6 @@
                 scores.push(r.score);
             });
 
-            // チャート描画
             new Chart(chartElement.getContext('2d'), {
                 type: 'radar',
                 data: {
@@ -356,15 +403,32 @@
         // イベントリスナー
         startButton.addEventListener('click', () => {
             startSection.classList.add('hidden');
+            userInfoSection.classList.remove('hidden');
+        });
+
+        userInfoNextButton.addEventListener('click', () => {
+            const lastName = document.getElementById('last-name').value;
+            const firstName = document.getElementById('first-name').value;
+            const age = document.getElementById('age').value;
+            const gender = document.getElementById('gender').value;
+
+            if (!lastName || !firstName || !age || !gender) {
+                alert("全ての項目を入力してください。");
+                return;
+            }
+
+            userInfo = { lastName, firstName, age, gender };
+            console.log("ユーザー情報:", userInfo);
+
+            userInfoSection.classList.add('hidden');
             loadQuestions();
         });
 
         nextButton.addEventListener('click', goToNextStep);
         prevButton.addEventListener('click', goToPrevStep);
 
-        // 終了ボタンのイベントリスナー
         startOverButton.addEventListener('click', () => {
-            location.reload(); // ページを再読み込みして初期状態に戻す
+            location.reload();
         });
     </script>
 </body>
