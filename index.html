@@ -78,7 +78,7 @@
 
     <script>
         // デプロイ後、「アクセスできるユーザー」を「全員」に設定して発行された新しいURLが必要。
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxxSOP9xkG3IyPE8ciEgZWipgwgcyS-fgYN5zQj4JKmNGVetNfekLgtzP9V7QAx1PI8qw/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxqQfj4Jo2xtCS3Nj4c5FyM1xPxIYrbls0_VjnTvKazpOF2QUeip1yTfwqkv-8m9vmXrg/exec";
 
         // HTML要素の取得
         const startSection = document.getElementById('start-section');
@@ -192,150 +192,160 @@
             });
         }
 
-        // 次のステップに進む
-        function goToNextStep() {
-            // 現在のステップの回答を保存
-            const currentCategory = orderedCategories[currentStep];
-            const questions = questionsByCategory[currentCategory];
-            const isAllAnswered = questions.every(q => document.querySelector(`input[name="q-${q.id.toString()}"]:checked`));
+        // 次のステップに進む
+        function goToNextStep() {
+            const currentCategory = orderedCategories[currentStep];
+            const questions = questionsByCategory[currentCategory];
+            
+            // 現在のステップの回答を保存
+            let isAllAnswered = true;
+            questions.forEach(q => {
+                const selected = document.querySelector(`input[name="q-${q.id.toString()}"]:checked`);
+                if (!selected) {
+                    isAllAnswered = false;
+                } else {
+                    userAnswers[q.id.toString()] = selected.value; // 回答を文字列として保存
+                }
+            });
 
-            if (!isAllAnswered) {
-                // アラートの文言をより分かりやすく修正
-                alert("このステップのすべての質問に回答すると、次の質問に進めます。");
-                return;
-            }
+            if (!isAllAnswered) {
+                alert("このステップのすべての質問に回答すると、次の質問に進めます。");
+                return;
+            }
 
-            questions.forEach(q => {
-                const selected = document.querySelector(`input[name="q-${q.id.toString()}"]:checked`);
-                if (selected) {
-                    userAnswers[q.id.toString()] = selected.value; // 回答を文字列として保存
-                }
-            });
+            if (currentStep < orderedCategories.length - 1) {
+                currentStep++;
+                renderStep();
+            } else {
+                submitAnswers();
+            }
+        }
+        
+        // 前のステップに戻る
+        function goToPrevStep() {
+            if (currentStep > 0) {
+                currentStep--;
+                renderStep();
+            }
+        }
 
-            if (currentStep < orderedCategories.length - 1) {
-                currentStep++;
-                renderStep();
-            } else {
-                submitAnswers();
-            }
-        }
-        
-        // 前のステップに戻る
-        function goToPrevStep() {
-            if (currentStep > 0) {
-                currentStep--;
-                renderStep();
-            }
-        }
+        // 質問の回答を送信する
+        async function submitAnswers() {
+            questionsSection.classList.add('hidden');
+            loadingSection.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
 
-        // 質問の回答を送信する
-        async function submitAnswers() {
-            questionsSection.classList.add('hidden');
-            loadingSection.classList.remove('hidden');
-            resultsSection.classList.add('hidden');
+            // カテゴリ別にスコアを計算
+            let categoryScores = {};
+            orderedCategories.forEach(category => {
+                const questions = questionsByCategory[category];
+                let score = 0;
+                questions.forEach(q => {
+                    if (userAnswers[q.id.toString()] === "1") {
+                        score += Number(q.score);
+                    }
+                });
+                categoryScores[category] = score;
+            });
 
-            const checkedAnswers = Object.keys(userAnswers)
-                .filter(id => userAnswers[id] === "1");
+            const scoresParam = encodeURIComponent(JSON.stringify(categoryScores));
+            const fullUrl = `${GAS_URL}?type=diagnose&categoryScores=${scoresParam}`;
+            console.log("診断リクエストURL:", fullUrl);
 
-            const answersParam = encodeURIComponent(JSON.stringify(checkedAnswers));
-            const fullUrl = `${GAS_URL}?type=diagnose&answers=${answersParam}`;
-            console.log("診断リクエストURL:", fullUrl); // デバッグ用
+            try {
+                const response = await fetch(fullUrl);
 
-            try {
-                // GASのdoGet関数がURLパラメータを期待するため、GETリクエストを使用
-                const response = await fetch(fullUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTPエラー！ステータス: ${response.status}`);
+                }
 
-                if (!response.ok) {
-                    throw new Error(`HTTPエラー！ステータス: ${response.status}`);
-                }
+                const data = await response.json();
+                console.log("診断結果のデータ:", data);
 
-                const data = await response.json();
-                console.log("診断結果のデータ:", data); // デバッグ用
+                loadingSection.classList.add('hidden');
+                if (data.diagnosis) {
+                    showResult(data.diagnosis);
+                } else {
+                    console.error("診断結果の取得に失敗しました:", data.error);
+                    questionsSection.classList.remove('hidden');
+                    alert("診断結果の取得に失敗しました。GASのコードを確認してください。");
+                }
+            } catch (error) {
+                console.error("診断のフェッチ中にエラーが発生しました:", error);
+                loadingSection.classList.add('hidden');
+                questionsSection.classList.remove('hidden');
+                alert("診断中にネットワークエラーが発生しました。GASのURLが正しいか確認してください。");
+            }
+        }
 
-                loadingSection.classList.add('hidden');
-                if (data.diagnosis) {
-                    showResult(data.diagnosis);
-                } else {
-                    console.error("診断結果の取得に失敗しました:", data.error);
-                    questionsSection.classList.remove('hidden');
-                    alert("診断結果の取得に失敗しました。GASのコードを確認してください。");
-                }
-            } catch (error) {
-                console.error("診断のフェッチ中にエラーが発生しました:", error);
-                loadingSection.classList.add('hidden');
-                questionsSection.classList.remove('hidden');
-                alert("診断中にネットワークエラーが発生しました。GASのURLが正しいか確認してください。");
-            }
-        }
+        // 結果を表示する（変更なし）
+        function showResult(diagnosis) {
+            resultsContainer.innerHTML = '';
+            const labels = [];
+            const scores = [];
 
-        // 結果を表示する
-        function showResult(diagnosis) {
-            resultsContainer.innerHTML = '';
-            const labels = [];
-            const scores = [];
+            diagnosis.forEach(r => {
+                resultsContainer.innerHTML += `
+                    <div class="p-4 bg-blue-50 rounded-lg">
+                        <p class="text-lg font-medium text-blue-800">${r.category}: スコア ${r.score}</p>
+                        <p class="mt-1 text-blue-600">傾向: ${r.tendency}</p>
+                    </div>
+                `;
+                labels.push(r.category);
+                scores.push(r.score);
+            });
 
-            diagnosis.forEach(r => {
-                resultsContainer.innerHTML += `
-                    <div class="p-4 bg-blue-50 rounded-lg">
-                        <p class="text-lg font-medium text-blue-800">${r.category}: スコア ${r.score}</p>
-                        <p class="mt-1 text-blue-600">傾向: ${r.tendency}</p>
-                    </div>
-                `;
-                labels.push(r.category);
-                scores.push(r.score);
-            });
+            // チャート描画
+            new Chart(chartElement.getContext('2d'), {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'カテゴリ別スコア',
+                        data: scores,
+                        fill: true,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        pointBackgroundColor: 'rgb(59, 130, 246)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(59, 130, 246)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    elements: {
+                        line: {
+                            borderWidth: 3
+                        }
+                    },
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: 'rgba(156, 163, 175, 1)'
+                            },
+                            grid: {
+                                color: 'rgba(156, 163, 175, 1)'
+                            },
+                            pointLabels: {
+                                color: 'rgb(55, 65, 81)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 5,
+                            ticks: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
 
-            // チャート描画
-            new Chart(chartElement.getContext('2d'), {
-                type: 'radar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'カテゴリ別スコア',
-                        data: scores,
-                        fill: true,
-                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                        borderColor: 'rgb(59, 130, 246)',
-                        pointBackgroundColor: 'rgb(59, 130, 246)',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgb(59, 130, 246)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    elements: {
-                        line: {
-                            borderWidth: 3
-                        }
-                    },
-                    scales: {
-                        r: {
-                            angleLines: {
-                                color: 'rgba(156, 163, 175, 1)'
-                            },
-                            grid: {
-                                color: 'rgba(156, 163, 175, 1)'
-                            },
-                            pointLabels: {
-                                color: 'rgb(55, 65, 81)',
-                                font: {
-                                    size: 14,
-                                    weight: 'bold'
-                                }
-                            },
-                            suggestedMin: 0,
-                            suggestedMax: 5,
-                            ticks: {
-                                display: false
-                            }
-                        }
-                    }
-                }
-            });
-
-            resultsSection.classList.remove('hidden');
-        }
+            resultsSection.classList.remove('hidden');
+        }
 
         // イベントリスナー
         startButton.addEventListener('click', () => {
