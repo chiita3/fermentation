@@ -4,20 +4,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>発酵診断アプリ</title>
+    <title>発酵キャリア診断</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            /* 背景画像のURLをローカルパスに修正しました */
+            background-image: url('./images/background.png');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
         }
 
-        /* 終了ボタンを右下に配置するためのスタイル */
+        select {
+            height: 3rem;
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
+
+        .btn-custom {
+            background-color: #02736f;
+            color: white;
+            font-weight: bold;
+            padding: 1rem 2.5rem;
+            border-radius: 9999px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition-property: all;
+            transition-duration: 300ms;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-custom:hover {
+            background-color: #015c59;
+            transform: scale(1.05);
+        }
+
+        /* 戻るボタンのスタイル */
+        .btn-prev {
+            background-color: #ddd9d9;
+            color: #4a4a4a;
+            font-weight: bold;
+            padding: 0.75rem 2rem;
+            border-radius: 9999px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition-property: all;
+            transition-duration: 300ms;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-prev:hover {
+            background-color: #c2bfbf;
+            transform: scale(1.05);
+        }
+
         #results-section {
             position: relative;
             padding-bottom: 70px;
-            /* ボタンの高さ分余白を追加 */
         }
 
         #start-over-button-container {
@@ -29,11 +73,11 @@
     </style>
 </head>
 
-<body class="bg-gray-100 text-gray-800 antialiased flex flex-col items-center min-h-screen p-4">
+<body class="text-gray-800 antialiased flex flex-col items-center min-h-screen p-4">
 
-    <div class="max-w-2xl w-full bg-white rounded-2xl shadow-xl p-8 space-y-8">
+    <div class="max-w-2xl w-full bg-white bg-opacity-90 rounded-2xl shadow-xl p-8 space-y-8">
         <header class="text-center">
-            <h1 class="text-4xl font-bold text-gray-900">発酵診断</h1>
+            <h1 class="text-4xl font-bold text-gray-900">発酵キャリア®︎</h1>
             <p class="mt-2 text-gray-600">あなたの揺らぎを診断します。</p>
         </header>
 
@@ -41,8 +85,7 @@
             <p class="text-lg text-gray-700 text-center">
                 質問に「はい」か「いいえ」で答えてください。
             </p>
-            <button id="start-button"
-                class="bg-green-600 text-white font-bold py-4 px-10 rounded-full text-xl shadow-lg hover:bg-green-700 transition duration-300 transform hover:scale-105">
+            <button id="start-button" class="btn-custom">
                 開始
             </button>
         </div>
@@ -50,24 +93,9 @@
         <div id="user-info-section" class="hidden space-y-6">
             <h2 class="text-2xl font-semibold border-b-2 pb-2">あなたの情報を入力してください</h2>
             <div class="space-y-4">
-                <div>
-                    <label for="last-name" class="block text-sm font-medium text-gray-700">苗字</label>
-                    <input type="text" id="last-name"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label for="first-name" class="block text-sm font-medium text-gray-700">氏名</label>
-                    <input type="text" id="first-name"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label for="age" class="block text-sm font-medium text-gray-700">年齢</label>
-                    <input type="number" id="age"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                </div>
-                <div>
+                <div class="space-y-2">
                     <label for="gender" class="block text-sm font-medium text-gray-700">性別</label>
-                    <select id="gender"
+                    <select id="gender" required
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="">選択してください</option>
                         <option value="男性">男性</option>
@@ -75,10 +103,105 @@
                         <option value="その他">その他</option>
                     </select>
                 </div>
+                <div class="space-y-2">
+                    <label for="age" class="block text-sm font-medium text-gray-700">年齢</label>
+                    <select id="age" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">選択してください</option>
+                        <option value="10代">10代</option>
+                        <option value="20代">20代</option>
+                        <option value="30代">30代</option>
+                        <option value="40代">40代</option>
+                        <option value="50代">50代</option>
+                        <option value="60代">60代</option>
+                        <option value="70代">70代</option>
+                        <option value="80代以上">80代以上</option>
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label for="prefecture" class="block text-sm font-medium text-gray-700">都道府県</label>
+                    <select id="prefecture" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">選択してください</option>
+                        <option value="北海道">北海道</option>
+                        <option value="青森県">青森県</option>
+                        <option value="岩手県">岩手県</option>
+                        <option value="宮城県">宮城県</option>
+                        <option value="秋田県">秋田県</option>
+                        <option value="山形県">山形県</option>
+                        <option value="福島県">福島県</option>
+                        <option value="茨城県">茨城県</option>
+                        <option value="栃木県">栃木県</option>
+                        <option value="群馬県">群馬県</option>
+                        <option value="埼玉県">埼玉県</option>
+                        <option value="千葉県">千葉県</option>
+                        <option value="東京都">東京都</option>
+                        <option value="神奈川県">神奈川県</option>
+                        <option value="新潟県">新潟県</option>
+                        <option value="富山県">富山県</option>
+                        <option value="石川県">石川県</option>
+                        <option value="福井県">福井県</option>
+                        <option value="山梨県">山梨県</option>
+                        <option value="長野県">長野県</option>
+                        <option value="岐阜県">岐阜県</option>
+                        <option value="静岡県">静岡県</option>
+                        <option value="愛知県">愛知県</option>
+                        <option value="三重県">三重県</option>
+                        <option value="滋賀県">滋賀県</option>
+                        <option value="京都府">京都府</option>
+                        <option value="大阪府">大阪府</option>
+                        <option value="兵庫県">兵庫県</option>
+                        <option value="奈良県">奈良県</option>
+                        <option value="和歌山県">和歌山県</option>
+                        <option value="鳥取県">鳥取県</option>
+                        <option value="島根県">島根県</option>
+                        <option value="岡山県">岡山県</option>
+                        <option value="広島県">広島県</option>
+                        <option value="山口県">山口県</option>
+                        <option value="徳島県">徳島県</option>
+                        <option value="香川県">香川県</option>
+                        <option value="愛媛県">愛媛県</option>
+                        <option value="高知県">高知県</option>
+                        <option value="福岡県">福岡県</option>
+                        <option value="佐賀県">佐賀県</option>
+                        <option value="長崎県">長崎県</option>
+                        <option value="熊本県">熊本県</option>
+                        <option value="大分県">大分県</option>
+                        <option value="宮崎県">宮崎県</option>
+                        <option value="鹿児島県">鹿児島県</option>
+                        <option value="沖縄県">沖縄県</option>
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label for="job" class="block text-sm font-medium text-gray-700">職業</label>
+                    <select id="job" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">選択してください</option>
+                        <option value="会社員">会社員</option>
+                        <option value="公務員">公務員</option>
+                        <option value="自営業/個人事業">自営業/個人事業</option>
+                        <option value="会社役員">会社役員</option>
+                        <option value="自由業">自由業</option>
+                        <option value="専業主婦/主夫">専業主婦/主夫</option>
+                        <option value="学生">学生</option>
+                        <option value="アルバイト/パート">アルバイト/パート</option>
+                        <option value="無職">無職</option>
+                        <option value="その他">その他</option>
+                    </select>
+                </div>
+                <div class="space-y-2">
+                    <label for="worry" class="block text-sm font-medium text-gray-700">現在の悩み</label>
+                    <select id="worry" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">選択してください</option>
+                        <option value="AAA">AAA</option>
+                        <option value="BBB">BBB</option>
+                        <option value="CCC">CCC</option>
+                    </select>
+                </div>
             </div>
             <div class="flex justify-center mt-6">
-                <button id="user-info-next-button"
-                    class="bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105">
+                <button id="user-info-next-button" class="btn-custom">
                     次へ
                 </button>
             </div>
@@ -88,36 +211,33 @@
             <h2 id="step-title" class="text-2xl font-semibold border-b-2 pb-2"></h2>
             <p id="step-info" class="text-gray-500"></p>
             <div id="questions-container" class="space-y-4">
-                </div>
+            </div>
             <div class="flex justify-between items-center mt-6">
-                <button id="prev-button"
-                    class="hidden bg-gray-300 text-gray-700 font-bold py-3 px-8 rounded-full shadow-lg hover:bg-gray-400 transition duration-300 transform hover:scale-105">
+                <button id="prev-button" class="hidden btn-prev">
                     戻る
                 </button>
-                <button id="next-button"
-                    class="bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105">
+                <button id="next-button" class="btn-custom">
                     次へ
                 </button>
             </div>
         </div>
 
         <div id="loading-section" class="hidden flex flex-col items-center justify-center space-y-4">
-            <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-teal-500 border-t-transparent"></div>
             <p class="text-lg font-medium text-gray-600">お待ちください...</p>
         </div>
 
         <div id="results-section" class="hidden space-y-6">
             <h2 class="text-2xl font-semibold border-b-2 pb-2">診断結果</h2>
             <div id="results-container" class="space-y-2">
-                </div>
+            </div>
             <div class="flex justify-center">
                 <div class="w-full max-w-sm">
                     <canvas id="chart"></canvas>
                 </div>
             </div>
             <div id="start-over-button-container">
-                <button id="start-over-button"
-                    class="bg-gray-500 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-gray-600 transition duration-300 transform hover:scale-105">
+                <button id="start-over-button" class="btn-custom">
                     終了
                 </button>
             </div>
@@ -126,7 +246,7 @@
 
     <script>
         // デプロイ後、「アクセスできるユーザー」を「全員」に設定して発行された新しいURLが必要。
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwXUIbKP5dzipK2C2bO-1KrPsnnreJsCNUJ3kJh-wJUsgdLsJ6FwG1N0mi6Zh1QodopvA/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxf0vErPwJFl8TIpiCKi0JvEA0cF-ZwrX2HmvlmryvJ1DjvzSTcPQ3a9rVvSGBd4PmFKA/exec";
 
         // HTML要素の取得
         const startSection = document.getElementById('start-section');
@@ -230,11 +350,11 @@
                     <p class="text-md font-bold text-gray-700">${q.text}</p>
                     <div class="mt-2 flex items-center space-x-6">
                         <label class="flex items-center space-x-2">
-                            <input type="radio" name="q-${questionId}" value="1" class="h-4 w-4 text-blue-600 focus:ring-blue-500" ${userAnswers[questionId] === "1" ? 'checked' : ''}>
+                            <input type="radio" name="q-${questionId}" value="1" class="h-4 w-4 text-teal-600 focus:ring-teal-500" ${userAnswers[questionId] === "1" ? 'checked' : ''}>
                             <span class="text-gray-700">はい</span>
                         </label>
                         <label class="flex items-center space-x-2">
-                            <input type="radio" name="q-${questionId}" value="0" class="h-4 w-4 text-blue-600 focus:ring-blue-500" ${userAnswers[questionId] === "0" ? 'checked' : ''}>
+                            <input type="radio" name="q-${questionId}" value="0" class="h-4 w-4 text-teal-600 focus:ring-teal-500" ${userAnswers[questionId] === "0" ? 'checked' : ''}>
                             <span class="text-gray-700">いいえ</span>
                         </label>
                     </div>
@@ -304,8 +424,7 @@
             };
             const scoresParam = encodeURIComponent(JSON.stringify(postData));
             const fullUrl = `${GAS_URL}?type=diagnose&data=${scoresParam}`;
-            console.log("診断リクエストURL:", fullUrl);
-
+            
             try {
                 const response = await fetch(fullUrl);
 
@@ -314,8 +433,6 @@
                 }
 
                 const data = await response.json();
-                console.log("診断結果のデータ:", data);
-
                 if (data.diagnosis) {
                     showResult(data.diagnosis);
                 } else {
@@ -340,9 +457,9 @@
 
             diagnosis.forEach(r => {
                 resultsContainer.innerHTML += `
-                    <div class="p-4 bg-blue-50 rounded-lg">
-                        <p class="text-lg font-medium text-blue-800">${r.category}: スコア ${r.score}</p>
-                        <p class="mt-1 text-blue-600">傾向: ${r.tendency}</p>
+                    <div class="p-4 bg-teal-50 rounded-lg">
+                        <p class="text-lg font-medium text-teal-800">${r.category}: スコア ${r.score}</p>
+                        <p class="mt-1 text-teal-600">傾向: ${r.tendency}</p>
                     </div>
                 `;
                 labels.push(r.category);
@@ -357,12 +474,12 @@
                         label: 'カテゴリ別スコア',
                         data: scores,
                         fill: true,
-                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                        borderColor: 'rgb(59, 130, 246)',
-                        pointBackgroundColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(2, 115, 111, 0.2)',
+                        borderColor: '#02736f',
+                        pointBackgroundColor: '#02736f',
                         pointBorderColor: '#fff',
                         pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: 'rgb(59, 130, 246)'
+                        pointHoverBorderColor: '#02736f'
                     }]
                 },
                 options: {
@@ -407,19 +524,18 @@
         });
 
         userInfoNextButton.addEventListener('click', () => {
-            const lastName = document.getElementById('last-name').value;
-            const firstName = document.getElementById('first-name').value;
-            const age = document.getElementById('age').value;
             const gender = document.getElementById('gender').value;
+            const age = document.getElementById('age').value;
+            const prefecture = document.getElementById('prefecture').value;
+            const job = document.getElementById('job').value;
+            const worry = document.getElementById('worry').value;
 
-            if (!lastName || !firstName || !age || !gender) {
-                alert("全ての項目を入力してください。");
+            if (!gender || !age || !prefecture || !job || !worry) {
+                alert("全ての項目を選択してください。");
                 return;
             }
 
-            userInfo = { lastName, firstName, age, gender };
-            console.log("ユーザー情報:", userInfo);
-
+            userInfo = { gender, age, prefecture, job, worry };
             userInfoSection.classList.add('hidden');
             loadQuestions();
         });
@@ -432,5 +548,5 @@
         });
     </script>
 </body>
-
 </html>
+
