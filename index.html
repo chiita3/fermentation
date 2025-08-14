@@ -61,7 +61,8 @@
 
         #results-section {
             position: relative;
-            padding-bottom: 70px;
+            /* 終了ボタンとの間に十分な空間を確保するため、パディングを増やしました */
+            padding-bottom: 120px; 
         }
 
         #start-over-button-container {
@@ -69,6 +70,19 @@
             bottom: 0;
             right: 0;
             padding: 20px;
+        }
+
+        /* 診断結果ボックスのカスタムカラー */
+        .bg-fermentation {
+            background-color: #02736f;
+        }
+
+        .bg-fluctuation {
+            background-color: #aedadd;
+        }
+
+        .bg-spoilage {
+            background-color: #ddd9d9;
         }
     </style>
 </head>
@@ -213,7 +227,7 @@
             <div id="questions-container" class="space-y-4">
             </div>
             <div class="flex justify-between items-center mt-6">
-                <button id="prev-button" class="hidden btn-prev">
+                <button id="prev-button" class="btn-prev">
                     戻る
                 </button>
                 <button id="next-button" class="btn-custom">
@@ -229,13 +243,10 @@
 
         <div id="results-section" class="hidden space-y-6">
             <h2 class="text-2xl font-semibold border-b-2 pb-2">診断結果</h2>
-            <div id="results-container" class="space-y-2">
+            <!-- 診断結果のコンテナを横並びにするためにGridを使用し、常に4列にする -->
+            <div id="results-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             </div>
-            <div class="flex justify-center">
-                <div class="w-full max-w-sm">
-                    <canvas id="chart"></canvas>
-                </div>
-            </div>
+            <!-- グラフは削除されました -->
             <div id="start-over-button-container">
                 <button id="start-over-button" class="btn-custom">
                     終了
@@ -260,7 +271,7 @@
         const loadingSection = document.getElementById('loading-section');
         const resultsSection = document.getElementById('results-section');
         const resultsContainer = document.getElementById('results-container');
-        const chartElement = document.getElementById('chart');
+        // const chartElement = document.getElementById('chart'); // グラフを削除したためコメントアウト
         const stepTitle = document.getElementById('step-title');
         const stepInfo = document.getElementById('step-info');
         const startOverButton = document.getElementById('start-over-button');
@@ -329,10 +340,11 @@
             stepTitle.textContent = `${currentCategory}の質問`;
             stepInfo.textContent = `ステップ ${currentStep + 1} / ${orderedCategories.length}`;
 
+            // 最初の質問ステップでも「戻る」ボタンを表示
             if (currentStep === 0) {
-                prevButton.classList.add('hidden');
+                prevButton.classList.add('hidden'); // 最初の質問カテゴリーの場合は非表示
             } else {
-                prevButton.classList.remove('hidden');
+                prevButton.classList.remove('hidden'); // それ以外は表示
             }
 
             if (currentStep === orderedCategories.length - 1) {
@@ -393,7 +405,15 @@
         
         // 前のステップに戻る
         function goToPrevStep() {
-            if (currentStep > 0) {
+            if (currentStep === 0) {
+                // 最初の質問ステップの場合、ユーザー情報入力画面に戻る
+                questionsSection.classList.add('hidden');
+                userInfoSection.classList.remove('hidden');
+                // ユーザー情報入力画面に戻った際に、必要に応じて状態をリセットすることも検討してください。
+                // 例: userInfo = {}; // ユーザー情報をクリアする場合
+                // currentStep = 0; // 質問のステップをリセットする場合
+            } else {
+                // 前の質問カテゴリーに戻る
                 currentStep--;
                 renderStep();
             }
@@ -452,65 +472,36 @@
         // 結果を表示する
         function showResult(diagnosis) {
             resultsContainer.innerHTML = '';
-            const labels = [];
-            const scores = [];
-
-            diagnosis.forEach(r => {
-                resultsContainer.innerHTML += `
-                    <div class="p-4 bg-teal-50 rounded-lg">
-                        <p class="text-lg font-medium text-teal-800">${r.category}: スコア ${r.score}</p>
-                        <p class="mt-1 text-teal-600">傾向: ${r.tendency}</p>
-                    </div>
-                `;
-                labels.push(r.category);
-                scores.push(r.score);
-            });
-
-            new Chart(chartElement.getContext('2d'), {
-                type: 'radar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'カテゴリ別スコア',
-                        data: scores,
-                        fill: true,
-                        backgroundColor: 'rgba(2, 115, 111, 0.2)',
-                        borderColor: '#02736f',
-                        pointBackgroundColor: '#02736f',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: '#02736f'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    elements: {
-                        line: {
-                            borderWidth: 3
-                        }
-                    },
-                    scales: {
-                        r: {
-                            angleLines: {
-                                color: 'rgba(156, 163, 175, 1)'
-                            },
-                            grid: {
-                                color: 'rgba(156, 163, 175, 1)'
-                            },
-                            pointLabels: {
-                                color: 'rgb(55, 65, 81)',
-                                font: {
-                                    size: 14,
-                                    weight: 'bold'
-                                }
-                            },
-                            suggestedMin: 0,
-                            suggestedMax: 5,
-                            ticks: {
-                                display: false
-                            }
-                        }
+            // 結果の表示順を「体」「心」「脳」「環境」に固定
+            const fixedOrderCategories = ["体", "心", "脳", "環境"];
+            
+            fixedOrderCategories.forEach(categoryName => {
+                const r = diagnosis.find(item => item.category === categoryName);
+                if (r) {
+                    let bgColorClass = '';
+                    let textColorClass = ''; // テキストカラーも変更
+                    
+                    if (r.tendency === "発酵") {
+                        bgColorClass = 'bg-fermentation';
+                        textColorClass = 'text-white';
+                    } else if (r.tendency === "揺らぎ") {
+                        bgColorClass = 'bg-fluctuation';
+                        textColorClass = 'text-gray-800'; // 揺らぎは背景が薄いので濃いテキスト
+                    } else if (r.tendency === "腐敗") {
+                        bgColorClass = 'bg-spoilage';
+                        textColorClass = 'text-gray-800'; // 腐敗も背景が薄いので濃いテキスト
+                    } else {
+                        bgColorClass = 'bg-gray-200'; // デフォルト
+                        textColorClass = 'text-gray-800';
                     }
+
+                    resultsContainer.innerHTML += `
+                        <div class="p-4 rounded-lg shadow-md text-center ${bgColorClass}">
+                            <p class="text-xl font-bold ${textColorClass}">${r.category}</p>
+                            <p class="mt-2 text-2xl font-semibold ${textColorClass}">${r.score}</p>
+                            <p class="mt-1 text-md ${textColorClass}">傾向: ${r.tendency}</p>
+                        </div>
+                    `;
                 }
             });
 
